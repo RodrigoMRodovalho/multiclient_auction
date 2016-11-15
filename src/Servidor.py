@@ -6,12 +6,37 @@ from threading import Thread, BoundedSemaphore
 PORT = 50053              # Arbitrary non-privileged port
 
 
-def lanca_produto(nome,descricao,lance_minimo,dia,mes,ano,hora,minuto,segundo,tempo_maximo):
-    #todo verificar se usuario esta logado
+def cadastra_produto(nome,descricao,lance_minimo,dia,mes,ano,hora,minuto,segundo,tempo_maximo):
+    #todo verificar se usuario esta logado (client side)
+
+    global s_arquivo_leiloes,controle_identificador_leilao
+
+    s_arquivo_leiloes.acquire()
+
+    arquivo_leiloes = open('registro/leiloes.txt', 'r+')
+
+    arquivo_leiloes.write(
+            controle_identificador_leilao + ',' +
+            nome + ',' +
+            descricao + ',' +
+            lance_minimo + ',' +
+            dia + ',' +
+            mes + ',' +
+            ano + ',' +
+            hora + ',' +
+            minuto + ',' +
+            segundo + ',' +
+            tempo_maximo + '\n')
+
+    arquivo_leiloes.close()
+
+    controle_identificador_leilao += 1
+    s_arquivo_leiloes.release()
+
     #todo gerar identificador unico para leilao
     stub = None
 
-def enviar_lance(identificador_leilao,valor):
+def recebe_lance(identificador_leilao,valor):
     #todo para o usuario que deu o lance retornar ok ou not_ok, para os outros, retornar
     #todo Identificador do leilao, nome do usuario, valor, numero de usuarios no leilao no
     #todo momento, numero de lances que ja foram dados.
@@ -145,6 +170,54 @@ def sair():
     #todo deslogar usuario
     stub = None
 
+
+def processa_pedido(mensagem):
+
+    if 'Lanca_produto' in mensagem:
+        mensagem = mensagem.split(',')
+
+    if 'Lista_leiloes' == mensagem:
+        stub = None
+
+    if 'Adiciona_usuario' in mensagem:
+        mensagem = mensagem.split(',')
+
+    if 'Apaga_usuario' in mensagem:
+        mensagem = mensagem.split(',')
+
+    if 'Faz_login' in mensagem:
+        mensagem = mensagem.split(',')
+
+    if 'Sair' == mensagem:
+        stub = None
+
+    if 'Entrar_leilao' in mensagem:
+        mensagem = mensagem.split(',')
+
+    if 'Sair_leilao' in mensagem:
+        mensagem = mensagem.split(',')
+
+    if 'Enviar_lance' in mensagem:
+        mensagem = mensagem.split(',')
+
+
+def aceita(conn):
+
+    global usuarios, s_usuarios
+
+    s_usuarios.acquire()
+    usuarios[conn] = [None,conn]
+    s_usuarios.release()
+
+    while True:
+        msg = conn.recv(4096)
+        print addr, ' >> ', msg
+        #conn.send(msg)
+        processa_pedido(msg)
+    conn.close()
+
+
+
 ###Soluca da internet para ver todas as informacoes sobre o erro dentro do except:
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -155,7 +228,7 @@ def PrintException():
     line = linecache.getline(filename, lineno, f.f_globals)
     print 'EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj)
 
-HOST = '192.168.0.105'  # Symbolic name meaning all available interfaces
+HOST = '192.168.0.101'  # Symbolic name meaning all available interfaces
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # IPv4,tipo de socket
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind((HOST, PORT))  # liga o socket com IP e porta
@@ -163,12 +236,21 @@ s.bind((HOST, PORT))  # liga o socket com IP e porta
 s_arquivo_usuarios = BoundedSemaphore()
 s_arquivo_leiloes = BoundedSemaphore()
 
+controle_identificador_leilao = 0
+s_controle_identificador_leilao = BoundedSemaphore()
+
+#{usario,conn}
+usuarios = {}
+s_usuarios = BoundedSemaphore()
+
+print 'Rodando Servidor'
+
 while 1:
     s.listen(1) #espera chegar pacotes na porta especificada
-    conn, addr = s.accept()#Aceita uma conexão
-    print 'Aceitou uma conexão de ', addr
+    conn, addr = s.accept()#Aceita uma conexao
+    print 'Aceitou uma conexao de ', addr
     #todo criar thread para aceitar conexao
-    #t = Thread(target=aceita, args=(conn,))
-    #t.start()
+    t = Thread(target=aceita, args=(conn,))
+    t.start()
 
 

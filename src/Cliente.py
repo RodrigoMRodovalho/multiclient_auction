@@ -1,6 +1,8 @@
 import socket
 import sys
 import linecache
+from threading import Thread, BoundedSemaphore
+from datetime import datetime
 
 def lanca_produto(nome,descricao,lance_minimo,dia,mes,ano,hora,minuto,segundo,tempo_maximo):
     #todo verificar se usuario esta logado
@@ -75,18 +77,27 @@ host_ip=''
 porta=''
 # Declaracao do socket de conexao com servidor
 servidor_sock = None
-usuario_esta_logado = False
+servidor_conectado = False
+s_servidor_contectado = BoundedSemaphore()
+s_usuario_logado = BoundedSemaphore()
+usuario_logado = False
 
 try:
-    host_ip = raw_input("Digite o IP do servidor...\n")
-    porta = raw_input("Digite a porta do servidor...\n")
-    host_ip = '192.168.0.105'
+    #host_ip = raw_input("Digite o IP do servidor...\n")
+    #porta = raw_input("Digite a porta do servidor...\n")
+    host_ip = '192.168.0.101'
     porta = 50053
 
-    #estabelece_conexao_servidor(host_ip, porta)
+
+    estabelece_conexao_servidor(host_ip, porta)
+
+    while True:
+        msg = raw_input("Digite a mensagem")
+        envia_mensagem_servidor(msg)
+
 #Caso de um erro, mostra mensagem
 except:
     PrintException()
 #Por final, desconecta serviddor
-#finally:
-    #desconecta_servidor()
+finally:
+    desconecta_servidor()
