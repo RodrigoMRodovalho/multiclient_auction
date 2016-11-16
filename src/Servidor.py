@@ -315,7 +315,7 @@ def processa_pedido(mensagem,conn):
             envia_mensagem_cliente(conn, 'not_ok')
 
     if 'Lista_leiloes' == mensagem:
-        envia_mensagem_cliente(conn,lista_leiloes())
+        envia_mensagem_cliente(conn,'Listagem,'+lista_leiloes())
 
     if 'Adiciona_usuario' in mensagem:
         mensagem = mensagem.split(',')
