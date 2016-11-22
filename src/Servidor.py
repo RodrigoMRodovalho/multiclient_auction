@@ -114,6 +114,18 @@ def recebe_lance(identificador_leilao,valor):
     #todo para o usuario que deu o lance retornar ok ou not_ok, para os outros, retornar
     #todo Identificador do leilao, nome do usuario, valor, numero de usuarios no leilao no
     #todo momento, numero de lances que ja foram dados.
+    #todo verificar se o lance dado e maior que o lance minimo
+    #todo verificar se o lance dado e maior que os lances dados anteriormente
+
+    global s_leiloes, leiloes
+
+    s_leiloes.acquire()
+
+    if valor > leiloes[identificador_leilao][0].lance_minimo:
+
+
+    s_leiloes.release
+
     stub = None
 
 def contato_vendedor():

@@ -2,12 +2,36 @@ import socket
 import sys
 import linecache
 from threading import Thread, BoundedSemaphore
-from datetime import datetime
+from datetime import datetime, time
+
+OP_ADICIONA_USUARIO = 1
+
 
 def lanca_produto(nome,descricao,lance_minimo,dia,mes,ano,hora,minuto,segundo,tempo_maximo):
     #todo verificar se usuario esta logado
     #todo gerar identificador unico para leilao
     stub = None
+
+def adiciona_usuario(nome,telefone,endereco,email,senha):
+
+    global resposta,s_resposta
+
+    s_resposta.acquire()
+    resposta = None
+    s_resposta.release()
+
+    envia_mensagem_servidor('Adiciona_usuario/',nome,telefone,endereco,email,senha)
+
+def faz_login(nome,senha):
+
+    global resposta,s_resposta
+
+    s_resposta.acquire()
+    resposta = None
+    s_resposta.release()
+
+    envia_mensagem_servidor('Faz_login/',nome,senha)
+
 
 ###Solucao da internet para ver todas as informacoes sobre o erro dentro do except:
 def PrintException():
@@ -71,6 +95,22 @@ def estabelece_conexao_servidor(host_ip,porta):
     servidor_conectado = True
     s_servidor_contectado.release()
 
+def escuta_servidor():
+
+    while True:
+        data = servidor_sock.recv(4096)
+        log_mensagem_recebida(data)
+
+        if 'Enviar_lance' not in data:
+            s_resposta.acquire()
+            resposta = data
+            s_resposta.release()
+        else:
+            #todo
+            stub = None
+
+
+
 
 #Variaveis para guarda informacoes do servidor
 host_ip=''
@@ -81,6 +121,11 @@ servidor_conectado = False
 s_servidor_contectado = BoundedSemaphore()
 s_usuario_logado = BoundedSemaphore()
 usuario_logado = False
+nome_usuario = ''
+operacao_atual = None
+s_operacao_atual = BoundedSemaphore()
+resposta = None
+s_resposta = BoundedSemaphore()
 
 try:
     #host_ip = raw_input("Digite o IP do servidor...\n")
@@ -91,8 +136,108 @@ try:
 
     estabelece_conexao_servidor(host_ip, porta)
 
+    s_servidor_contectado.acquire()
+    if servidor_conectado:
+        t = Thread(target=escuta_servidor())
+        t.start()
+    else:
+        print 'Não foi possível conectar ao servidor \n'
+    s_servidor_contectado.release()
+
     while True:
-        msg = raw_input("Digite a mensagem")
+        s_usuario_logado.acquire()
+        if usuario_logado:
+            print 'Login :', nome_usuario, '\n'
+        else:
+            print 'Login : Deslogado\n'
+        s_usuario_logado.release()
+
+        print 'Leilão da UFF\n'
+        print '1 - Cadastrar usuário\n'
+        print '2 - Logar/Deslogar usuário\n'
+        print '3 - Cadastrar produto\n'
+        print '4 - Listar produtos\n'
+        print '5 - Participar de um leilão\n'
+        print '6 - Sair de um leilão\n'
+        print '7 - Dar um lance\n'
+        print '8 - Sair\n'
+
+        opcao = raw_input("Digite sua opção\n")
+
+        if opcao is '1':
+            nome = raw_input("Digite o nome\n")
+            telefone = raw_input("Digite o telefone\n")
+            endereco = raw_input("Digite o endereco\n")
+            email = raw_input("Digite o email\n")
+            senha = raw_input("Digite a senha\n")
+
+            adiciona_usuario(nome, telefone,endereco,email,senha)
+
+            while True:
+                s_resposta.acquire()
+
+                if resposta is not None:
+
+                    if resposta is 'Ok':
+                        print 'Cadastro efetuado com sucesso\n'
+                    else:
+                        print 'Não foi possível realizar o cadastro\n'
+
+                    raw_input("Aperte enter para sair\n")
+                    break
+                s_resposta.release()
+                time.sleep(0.3)
+
+        elif opcao is '2':
+
+            s_usuario_logado.acquire()
+
+            if usuario_logado:
+                envia_mensagem_servidor('Sair')
+            else:
+                nome = raw_input("Digite o nome\n")
+                senha = raw_input("Digite a senha\n")
+
+                faz_login(nome, senha)
+
+                while True:
+                    s_resposta.acquire()
+
+                    if resposta is not None:
+
+                        if resposta is 'Ok':
+                            print 'Login efetuado com sucesso - Bem vindo Sr(a) ',nome,'\n'
+                            usuario_logado = True
+                            nome_usuario = nome
+
+                        else:
+                            print 'Não foi possível realizar o login\n'
+
+                        raw_input("Aperte enter para sair\n")
+                        break
+                    s_resposta.release()
+                    time.sleep(0.3)
+
+            s_usuario_logado.release()
+
+        elif opcao is '3':
+
+            s_usuario_logado.acquire()
+
+            if usuario_logado:
+
+            else:
+                print 'Operacao somente permitida para usuarios logados'
+
+            s_usuario_logado.release()
+
+
+
+
+    envia_mensagem_servidor('Adiciona_usuario,rodrigo,27231313,Rua X,a@b.com,12345')
+
+    while True:
+        msg = raw_input("Digite a mensagem\n")
         envia_mensagem_servidor(msg)
 
 #Caso de um erro, mostra mensagem
