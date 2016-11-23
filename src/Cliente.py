@@ -2,15 +2,24 @@ import socket
 import sys
 import linecache
 from threading import Thread, BoundedSemaphore
-from datetime import datetime, time
+from datetime import datetime
+import time
 
 OP_ADICIONA_USUARIO = 1
 
 
 def lanca_produto(nome,descricao,lance_minimo,dia,mes,ano,hora,minuto,segundo,tempo_maximo):
-    #todo verificar se usuario esta logado
-    #todo gerar identificador unico para leilao
-    stub = None
+
+    global resposta, s_resposta
+
+    s_resposta.acquire()
+    resposta = None
+    s_resposta.release()
+
+    envia_mensagem_servidor(
+        'Lanca_produto,' + nome + ',' + descricao + ',' + lance_minimo + ',' + dia
+        + ',' +mes + ',' + ano + ',' + hora + ',' + minuto + ',' + segundo + ',' +tempo_maximo)
+
 
 def adiciona_usuario(nome,telefone,endereco,email,senha):
 
@@ -20,7 +29,8 @@ def adiciona_usuario(nome,telefone,endereco,email,senha):
     resposta = None
     s_resposta.release()
 
-    envia_mensagem_servidor('Adiciona_usuario/',nome,telefone,endereco,email,senha)
+    resp = 'Adiciona_usuario,'+nome+','+telefone+','+endereco+','+email+','+senha
+    envia_mensagem_servidor(resp)
 
 def faz_login(nome,senha):
 
@@ -30,7 +40,7 @@ def faz_login(nome,senha):
     resposta = None
     s_resposta.release()
 
-    envia_mensagem_servidor('Faz_login/',nome,senha)
+    envia_mensagem_servidor('Faz_login,'+nome+','+senha)
 
 
 ###Solucao da internet para ver todas as informacoes sobre o erro dentro do except:
@@ -97,6 +107,8 @@ def estabelece_conexao_servidor(host_ip,porta):
 
 def escuta_servidor():
 
+    global s_resposta,resposta
+
     while True:
         data = servidor_sock.recv(4096)
         log_mensagem_recebida(data)
@@ -130,7 +142,7 @@ s_resposta = BoundedSemaphore()
 try:
     #host_ip = raw_input("Digite o IP do servidor...\n")
     #porta = raw_input("Digite a porta do servidor...\n")
-    host_ip = '192.168.0.101'
+    host_ip = '192.168.0.105'
     porta = 50053
 
 
@@ -138,10 +150,10 @@ try:
 
     s_servidor_contectado.acquire()
     if servidor_conectado:
-        t = Thread(target=escuta_servidor())
+        t = Thread(target=escuta_servidor)
         t.start()
     else:
-        print 'Não foi possível conectar ao servidor \n'
+        print 'Nao foi possivel conectar ao servidor \n'
     s_servidor_contectado.release()
 
     while True:
@@ -152,43 +164,45 @@ try:
             print 'Login : Deslogado\n'
         s_usuario_logado.release()
 
-        print 'Leilão da UFF\n'
-        print '1 - Cadastrar usuário\n'
-        print '2 - Logar/Deslogar usuário\n'
-        print '3 - Cadastrar produto\n'
-        print '4 - Listar produtos\n'
-        print '5 - Participar de um leilão\n'
-        print '6 - Sair de um leilão\n'
-        print '7 - Dar um lance\n'
+        print 'Leilao da UFF\n'
+        print '1 - Cadastrar usuario'
+        print '2 - Logar/Deslogar usuario'
+        print '3 - Cadastrar produto'
+        print '4 - Listar produtos'
+        print '5 - Participar de um leilao'
+        print '6 - Sair de um leilao'
+        print '7 - Dar um lance'
         print '8 - Sair\n'
 
-        opcao = raw_input("Digite sua opção\n")
+        opcao = raw_input("Digite sua opcao\n")
 
-        if opcao is '1':
+        if opcao == '1':
             nome = raw_input("Digite o nome\n")
             telefone = raw_input("Digite o telefone\n")
             endereco = raw_input("Digite o endereco\n")
             email = raw_input("Digite o email\n")
             senha = raw_input("Digite a senha\n")
 
-            adiciona_usuario(nome, telefone,endereco,email,senha)
+            adiciona_usuario(nome,telefone,endereco,email,senha)
 
             while True:
                 s_resposta.acquire()
 
                 if resposta is not None:
 
-                    if resposta is 'Ok':
+                    if resposta == 'Ok':
                         print 'Cadastro efetuado com sucesso\n'
                     else:
-                        print 'Não foi possível realizar o cadastro\n'
+                        print 'Nao foi possivel realizar o cadastro\n'
 
-                    raw_input("Aperte enter para sair\n")
+                    raw_input("Aperte enter para continuar\n")
+                    resposta = None
+                    s_resposta.release()
                     break
                 s_resposta.release()
                 time.sleep(0.3)
 
-        elif opcao is '2':
+        elif opcao == '2':
 
             s_usuario_logado.acquire()
 
@@ -205,40 +219,66 @@ try:
 
                     if resposta is not None:
 
-                        if resposta is 'Ok':
+                        if resposta == 'Ok':
                             print 'Login efetuado com sucesso - Bem vindo Sr(a) ',nome,'\n'
                             usuario_logado = True
                             nome_usuario = nome
 
                         else:
-                            print 'Não foi possível realizar o login\n'
+                            print 'Nao foi possivel realizar o login\n'
 
-                        raw_input("Aperte enter para sair\n")
+                        raw_input("Aperte enter para continuar\n")
+                        resposta = None
+                        s_resposta.release()
                         break
                     s_resposta.release()
                     time.sleep(0.3)
 
             s_usuario_logado.release()
 
-        elif opcao is '3':
+        elif opcao == '3':
 
             s_usuario_logado.acquire()
 
             if usuario_logado:
+                nome = raw_input("Digite o nome\n")
+                descricao = raw_input("Digite a descricao\n")
+                lance_minimo = raw_input("Digite o lance minimo\n")
+                dia = raw_input("Digite o dia de inicio do leilao\n")
+                mes = raw_input("Digite o mes de inicio do leilao\n")
+                ano = raw_input("Digite o ano de inicio do leilao\n")
+                hora = raw_input("Digite a hora de inicio do leilao\n")
+                minuto = raw_input("Digite o minuto de inicio do leilao\n")
+                segundo = raw_input("Digite o segundo de inicio do leilao\n")
+                tempo_maximo = raw_input("Digite o tempo maximo do leilao\n")
+
+                lanca_produto(nome,descricao,lance_minimo,dia,mes,ano,hora,minuto,segundo,tempo_maximo)
+
+                while True:
+                    s_resposta.acquire()
+
+                    if resposta is not None:
+
+                        if resposta == 'Ok':
+                            print 'Produto cadastrado com sucesso\n'
+                        else:
+                            print 'Nao foi possivel realizar o cadastro do produto ',nome,'\n'
+
+                        raw_input("Aperte enter para continuar\n")
+                        resposta = None
+                        s_resposta.release()
+                        break
+                    s_resposta.release()
+                    time.sleep(0.3)
 
             else:
                 print 'Operacao somente permitida para usuarios logados'
+                raw_input("Aperte enter para continuar\n")
 
             s_usuario_logado.release()
 
+        print("\033c")
 
-
-
-    envia_mensagem_servidor('Adiciona_usuario,rodrigo,27231313,Rua X,a@b.com,12345')
-
-    while True:
-        msg = raw_input("Digite a mensagem\n")
-        envia_mensagem_servidor(msg)
 
 #Caso de um erro, mostra mensagem
 except:
