@@ -20,7 +20,6 @@ def lanca_produto(nome,descricao,lance_minimo,dia,mes,ano,hora,minuto,segundo,te
         'Lanca_produto,' + nome + ',' + descricao + ',' + lance_minimo + ',' + dia
         + ',' +mes + ',' + ano + ',' + hora + ',' + minuto + ',' + segundo + ',' +tempo_maximo)
 
-
 def adiciona_usuario(nome,telefone,endereco,email,senha):
 
     global resposta,s_resposta
@@ -42,6 +41,45 @@ def faz_login(nome,senha):
 
     envia_mensagem_servidor('Faz_login,'+nome+','+senha)
 
+def envia_lance(identificador_leilao,valor_lance):
+
+    global resposta,s_resposta
+
+    s_resposta.acquire()
+    resposta = None
+    envia_mensagem_servidor('Enviar_lance,'+identificador_leilao+','+valor_lance)
+    s_resposta.release()
+
+def lista_leiloes():
+
+    global resposta,s_resposta
+
+    s_resposta.acquire()
+    resposta = None
+    envia_mensagem_servidor('Lista_leiloes')
+    s_resposta.release()
+
+def entra_leilao(identificador_leilao):
+
+    global resposta,s_resposta
+    s_resposta.acquire()
+    resposta = None
+    envia_mensagem_servidor('Entrar_leilao,'+identificador_leilao)
+    s_resposta.release()
+
+def sair_leilao(identificador_leilao):
+    global resposta, s_resposta
+    s_resposta.acquire()
+    resposta = None
+    envia_mensagem_servidor('Sair_leilao,' + identificador_leilao)
+    s_resposta.release()
+
+def envia_lance(identificador_leilao,valor):
+    global resposta, s_resposta
+    s_resposta.acquire()
+    resposta = None
+    envia_mensagem_servidor('Enviar_lance,' + identificador_leilao + ',' + valor)
+    s_resposta.release()
 
 ###Solucao da internet para ver todas as informacoes sobre o erro dentro do except:
 def PrintException():
@@ -113,13 +151,18 @@ def escuta_servidor():
         data = servidor_sock.recv(4096)
         log_mensagem_recebida(data)
 
-        if 'Enviar_lance' not in data:
+        if 'Contato_cliente' in data:
+            pass
+        elif 'Contato_vendedor' in data:
+            pass
+        elif 'Lance' in data:
+            pass
+        elif 'Fim_leilao' in data:
+            pass
+        else:
             s_resposta.acquire()
             resposta = data
             s_resposta.release()
-        else:
-            #todo
-            stub = None
 
 
 
@@ -142,7 +185,7 @@ s_resposta = BoundedSemaphore()
 try:
     #host_ip = raw_input("Digite o IP do servidor...\n")
     #porta = raw_input("Digite a porta do servidor...\n")
-    host_ip = '192.168.0.105'
+    host_ip = '127.0.0.1'
     porta = 50053
 
 
@@ -168,7 +211,7 @@ try:
         print '1 - Cadastrar usuario'
         print '2 - Logar/Deslogar usuario'
         print '3 - Cadastrar produto'
-        print '4 - Listar produtos'
+        print '4 - Listar leiloes'
         print '5 - Participar de um leilao'
         print '6 - Sair de um leilao'
         print '7 - Dar um lance'
@@ -277,7 +320,132 @@ try:
 
             s_usuario_logado.release()
 
-        print("\033c")
+        elif opcao == '4':
+
+            lista_leiloes()
+
+            while True:
+                s_resposta.acquire()
+
+                if resposta is not None:
+
+                    if 'Nenhum leilao disponivel' in resposta:
+                        print resposta.split(',')[1]+'\n'
+                    else:
+                        #todo formatar a apresentacao das informacoes dos leiloes
+                        print 'Leiloes Ativos'
+                        resposta = resposta.replace('Listagem,','').split('\n')
+                        for r in resposta:
+                            print r
+
+                    raw_input("Aperte enter para continuar\n")
+                    resposta = None
+                    s_resposta.release()
+                    break
+                s_resposta.release()
+                time.sleep(0.3)
+
+        elif opcao == '5':
+
+            s_usuario_logado.acquire()
+
+            if usuario_logado:
+                identificador_leilao = raw_input("Digite o identificador do leilao\n")
+
+                entra_leilao(identificador_leilao)
+
+                while True:
+                    s_resposta.acquire()
+
+                    if resposta is not None:
+
+                        if resposta == 'Ok':
+                            print 'Entrada no leilao '+identificador_leilao+' com sucesso\n'
+                        else:
+                            print 'Nao foi possivel entrar no leilao '+identificador_leilao + '\n'
+
+                        raw_input("Aperte enter para continuar\n")
+                        resposta = None
+                        s_resposta.release()
+                        break
+                    s_resposta.release()
+                    time.sleep(0.3)
+
+            else:
+                print 'Operacao somente permitida para usuarios logados'
+                raw_input("Aperte enter para continuar\n")
+
+            s_usuario_logado.release()
+
+        elif opcao == '6':
+
+            s_usuario_logado.acquire()
+
+            if usuario_logado:
+                identificador_leilao = raw_input("Digite o identificador do leilao\n")
+
+                sair_leilao(identificador_leilao)
+
+                while True:
+                    s_resposta.acquire()
+
+                    if resposta is not None:
+
+                        if resposta == 'Ok':
+                            print 'Saida do leilao ' + identificador_leilao + ' com sucesso\n'
+                        else:
+                            print 'Nao foi possivel sair do leilao ' + identificador_leilao + '\n'
+
+                        raw_input("Aperte enter para continuar\n")
+                        resposta = None
+                        s_resposta.release()
+                        break
+                    s_resposta.release()
+                    time.sleep(0.3)
+
+            else:
+                print 'Operacao somente permitida para usuarios logados'
+                raw_input("Aperte enter para continuar\n")
+
+            s_usuario_logado.release()
+
+        elif opcao == '7':
+
+            s_usuario_logado.acquire()
+
+            if usuario_logado:
+                identificador_leilao = raw_input("Digite o identificador do leilao\n")
+                valor = raw_input("Digite o valor do lance\n")
+
+                envia_lance(identificador_leilao,valor)
+
+                while True:
+                    s_resposta.acquire()
+
+                    if resposta is not None:
+
+                        if resposta == 'Ok':
+                            print 'Lance realizado com sucesso\n'
+                        else:
+                            print 'Nao foi possivel dar o lance \n'
+
+                        raw_input("Aperte enter para continuar\n")
+                        resposta = None
+                        s_resposta.release()
+                        break
+                    s_resposta.release()
+                    time.sleep(0.3)
+
+            else:
+                print 'Operacao somente permitida para usuarios logados'
+                raw_input("Aperte enter para continuar\n")
+
+            s_usuario_logado.release()
+
+        elif opcao == '8':
+            pass
+
+        #print("\033c")
 
 
 #Caso de um erro, mostra mensagem
