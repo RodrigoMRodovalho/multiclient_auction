@@ -131,9 +131,9 @@ def recebe_lance(identificador_leilao, valor, conn):
         s_usuarios.acquire()
         #verifica se o usuario que deu o lance esta participando do leilao solicitado
         if usuarios[conn][0] in leiloes[int(identificador_leilao)][1]:
-            #verifica se o lance dado é maior que o lance minimo
+            #verifica se o lance dado e maior que o lance minimo
             if valor > int(leiloes[identificador_leilao][0].lance_minimo):
-                #verifica se o lance dado é maior que o valor do lance atual
+                #verifica se o lance dado e maior que o valor do lance atual
                 if valor > int(leiloes[identificador_leilao][0].lance_atual):
                     #atualiza o valor do lance atual e o usuario que deu o lance atual do leilao na lista de leiloes
                     leiloes[identificador_leilao][0].atualiza_lance_atual(valor,usuarios[conn][0])
