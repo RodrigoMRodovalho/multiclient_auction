@@ -285,7 +285,7 @@ def apaga_usuario(nome, senha):
 
     s_arquivo_usuarios.acquire()
     #abre o arquivo de usuarios no modo leitura
-    arquivo_usuarios = open('registro/usuarios.txt', 'r')
+    arquivo_usuarios = open('usuarios.txt', 'r')
 
     linha_para_remover = None
     for linha in arquivo_usuarios:
@@ -301,7 +301,7 @@ def apaga_usuario(nome, senha):
     if linha_para_remover is None:
         print 'Usuario e senha imcompativeis'
     else:
-        arquivo_usuarios = open('registro/usuarios.txt', 'r+')
+        arquivo_usuarios = open('usuarios.txt', 'r+')
 
         #faz a leitura das linhas do arquivo
         linhas = arquivo_usuarios.readlines()
@@ -326,7 +326,7 @@ def faz_login(nome, senha, conn):
 
     # verificar se o usuario e senha estao no arquivo e se sao compativeis
     s_arquivo_usuarios.acquire()
-    arquivo_usuarios = open('registro/usuarios.txt', 'r')
+    arquivo_usuarios = open('usuarios.txt', 'r')
 
     usuario_cadastrado = False
     usuario_logado = None
