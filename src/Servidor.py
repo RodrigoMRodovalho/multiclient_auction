@@ -567,10 +567,13 @@ s_controle_identificador_leilao = BoundedSemaphore()
 
 # Lista de usuarios, contendo {Usario,conn}
 usuarios = {}
+
+# Semaforo para acesso a lista de usuarios, pois e acessada por mais de uma thread
 s_usuarios = BoundedSemaphore()
 
 # Lista de leiloes, contendo {Leilao, usuarios_no_leilao}
 leiloes = {}
+# Semaforo para acesso a lista de leiloes, pois e acessada por mais de uma thread
 s_leiloes = BoundedSemaphore()
 
 s_numero_leiloes_ativos = BoundedSemaphore()
@@ -578,6 +581,7 @@ numero_leiloes_ativos = 0
 
 print 'Rodando Servidor'
 
+#Criacao de thread para rodar em pararelo as trocas de mensagens para contabilizar os tempos dos leiloes
 t = Thread(target=conta_tempo, args=())
 t.start()
 
@@ -585,5 +589,6 @@ while 1:
     s.listen(1)  # espera chegar pacotes na porta especificada
     conn, addr = s.accept()  # Aceita uma conexao
     print 'Aceitou uma conexao de ', addr
+    #Criacao de thread para nao travar o servidor e poder receber conexoes dos clientes a qualquer momento
     t = Thread(target=aceita, args=(conn,addr,))
     t.start()

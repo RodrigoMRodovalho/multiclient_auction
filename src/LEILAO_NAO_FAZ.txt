@@ -1,0 +1,6 @@
+O que o programa de leilao NAO FAZ:
+
+1) Durante os períodos sem lances, o servidor deve mandar o valor atual e o autor do lance de 1 em 1 segundo para todos os participantes. Caso ainda não tenham sido feitos lances, o nome do autor deve ser preenchido com a string
+“Aguardando o envio” e o lance com o valor mínimo.
+
+2) O leilão começar na hora certa
