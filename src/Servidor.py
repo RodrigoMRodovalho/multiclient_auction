@@ -401,9 +401,9 @@ def processa_pedido(mensagem, conn):
             envia_mensagem_cliente(conn, 'not_ok')
 
     if 'Sair' == mensagem:
-        #remove usuario da lista de usuarios
+        #remove usuario logado da lista de usuarios
         s_usuarios.acquire()
-        del usuarios[conn]
+        usuarios[conn][0] = None
         s_usuarios.release()
 
         envia_mensagem_cliente(conn, 'Ok')
