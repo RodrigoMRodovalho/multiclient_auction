@@ -454,6 +454,63 @@ class TelaLeilao(wx.Frame):
         self.remove_leilao_tabela(int(info[0]))
         self.mostra_janela_aviso('Leilao ' + info[0] + ' foi arrematado por ' + info[1] + ' pelo comprador ' + info[2])
 
+    def mostra_lista_leiloes(self,info):
+
+        # verifica se existe algum leilao ativo
+        if 'Listagem,' == info:
+            self.mostra_janela_aviso('Nenhum leilao disponivel')
+        else:
+            # cria janela de leiloes para mostrar a lista de leiloes
+            janela_lista_leiloes = JanelaListaLeiloes(None, info)
+            janela_lista_leiloes.Center()
+            if janela_lista_leiloes.ShowModal() == wx.ID_OK:
+                pass
+            janela_lista_leiloes.Destroy()
+
+    #funcao que processa as respostas de Ok ou not_ok do servidor
+    def processa_resposta(self,resposta):
+
+        global operacao_atual, s_operacao_atual, usuario_logado, nome_usuario, nome_usuario
+
+        if resposta == 'Ok':
+
+            s_operacao_atual.acquire()
+            if operacao_atual[0] == OPERACAO_CADASTRO_USUARIO:
+                self.mostra_janela_aviso('Cadastro realizado com sucesso')
+            elif operacao_atual[0] == OPERACAO_LOGIN:
+                usuario_logado = True
+                nome_usuario = operacao_atual[1][0]
+                # atualiza nome do usuario logado na tela
+                self.atualiza_usuario(nome_usuario)
+                self.mostra_janela_aviso('Login efetuado com sucesso - Bem vindo Sr(a) ' + nome_usuario)
+
+            elif operacao_atual[0] == OPERACAO_SAIDA:
+                usuario_logado = False
+                nome_usuario = 'Nao Logado'
+                # inicia nome de usuario como Nao logado
+                self.atualiza_usuario(nome_usuario)
+                self.mostra_janela_aviso('Saida realiza com sucesso')
+
+            elif operacao_atual[0] == OPERACAO_CADASTRO_PRODUTO:
+                self.mostra_janela_aviso('Produto cadastrado com sucesso')
+
+            elif operacao_atual[0] == OPERACAO_ENTRAR_LEILAO:
+                #insere leilao na tabela de leiloes
+                self.insere_leilao_tabela(operacao_atual[1])
+                self.mostra_janela_aviso('Entrada no leilao ' + operacao_atual[1] + ' com sucesso')
+
+            elif operacao_atual[0] == OPERACAO_SAIR_LEILAO:
+                # remove leilao da tabela de leiloes
+                self.remove_leilao_tabela(operacao_atual[1])
+                self.mostra_janela_aviso('Saida do leilao ' + operacao_atual[1] + ' com sucesso')
+
+            elif operacao_atual[0] == OPERACAO_DAR_LANCE:
+                self.mostra_janela_aviso('Lance realizado com sucesso')
+
+            s_operacao_atual.release()
+        else:
+            self.mostra_janela_aviso('Nao foi possivel realizar essa operacao')
+
     # funcao que cria uma janela de aviso
     def mostra_janela_aviso(self, aviso):
         j_aviso = JanelaAviso(None, aviso)
@@ -463,7 +520,7 @@ class TelaLeilao(wx.Frame):
 
 # funcao de evento de clique do botao para cadastrar usuario
 def botao_cadastrar_usuario(evento):
-    global s_resposta, resposta
+    global s_operacao_atual,operacao_atual
 
     #criacao da janela de cadastro de usuario
     janela = JanelaCadastraUsuario(None)
@@ -475,54 +532,26 @@ def botao_cadastrar_usuario(evento):
     janela.Destroy()
 
     if dados is not None:
+        s_operacao_atual.acquire()
+        operacao_atual = [OPERACAO_CADASTRO_USUARIO]
+        s_operacao_atual.release()
+
         adiciona_usuario(dados[0], dados[1], dados[2], dados[3], dados[4])
-        while True:
-            s_resposta.acquire()
-
-            if resposta is not None:
-
-                if resposta == 'Ok':
-                    tela.mostra_janela_aviso('Cadastro realizado com sucesso')
-                else:
-                    tela.mostra_janela_aviso('Nao foi possivel realizar o cadastro')
-
-                resposta = None
-                s_resposta.release()
-                break
-            s_resposta.release()
-            time.sleep(0.3)
 
 # funcao de evento de clique do botao para logar/deslogar
 def botao_login_deslogar(evento):
-    global s_resposta, resposta, s_usuario_logado, usuario_logado, nome_usuario
+    global s_usuario_logado, usuario_logado, nome_usuario,s_operacao_atual,operacao_atual
 
     s_usuario_logado.acquire()
 
     #verifica se o usuario esta logado - para ver se vai logar ou deslogar
     if usuario_logado:
+        s_operacao_atual.acquire()
+        operacao_atual = [OPERACAO_SAIDA]
+        s_operacao_atual.release()
+
         #envia mensagem para sair
         envia_mensagem_servidor('Sair')
-        #espera retorno
-        while True:
-            s_resposta.acquire()
-
-            if resposta is not None:
-
-                if resposta == 'Ok':
-
-                    usuario_logado = False
-                    nome_usuario = 'Nao Logado'
-                    #inicia nome de usuario como Nao logado
-                    tela.atualiza_usuario(nome_usuario)
-                    tela.mostra_janela_aviso('Saida realiza com sucesso')
-                else:
-                    tela.mostra_janela_aviso('Nao foi possivel realizar essa operacao')
-
-                resposta = None
-                s_resposta.release()
-                break
-            s_resposta.release()
-            time.sleep(0.3)
     else:
         # criacao da janela de dados de login de usuario
         janela = JanelaDadosLogin(None)
@@ -535,36 +564,19 @@ def botao_login_deslogar(evento):
 
         if dados_login is not None:
 
+            s_operacao_atual.acquire()
+            operacao_atual = [OPERACAO_LOGIN,dados_login]
+            s_operacao_atual.release()
+
             #chama funcao para fazer login
             faz_login(dados_login[0], dados_login[1])
 
-            # espera retorno
-            while True:
-                s_resposta.acquire()
-
-                if resposta is not None:
-
-                    if resposta == 'Ok':
-
-                        usuario_logado = True
-                        nome_usuario = dados_login[0]
-                        #atualiza nome do usuario logado na tela
-                        tela.atualiza_usuario(nome_usuario)
-                        tela.mostra_janela_aviso('Login efetuado com sucesso - Bem vindo Sr(a) ' + nome_usuario)
-                    else:
-                        tela.mostra_janela_aviso('Nao foi possivel realizar essa operacao')
-
-                    resposta = None
-                    s_resposta.release()
-                    break
-                s_resposta.release()
-                time.sleep(0.3)
 
     s_usuario_logado.release()
 
 # funcao de evento de clique do botao para cadastrar produto
 def botao_cadastrar_produto(evento):
-    global s_resposta, resposta, s_usuario_logado, usuario_logado
+    global s_operacao_atual, operacao_atual, s_usuario_logado, usuario_logado
 
     s_usuario_logado.acquire()
 
@@ -581,26 +593,13 @@ def botao_cadastrar_produto(evento):
 
         if dados is not None:
 
+            s_operacao_atual.acquire()
+            operacao_atual = [OPERACAO_CADASTRO_PRODUTO]
+            s_operacao_atual.release()
+
             #chama funcao para lancar produto
             lanca_produto(dados[0], dados[1], dados[2], dados[3], dados[4], dados[5], dados[6], dados[7], dados[8],
                           dados[9])
-
-            # espera retorno
-            while True:
-                s_resposta.acquire()
-
-                if resposta is not None:
-
-                    if resposta == 'Ok':
-                        tela.mostra_janela_aviso('Produto cadastrado com sucesso')
-                    else:
-                        tela.mostra_janela_aviso('Nao foi possivel realizar o cadastro do produto ' + dados[0])
-
-                    resposta = None
-                    s_resposta.release()
-                    break
-                s_resposta.release()
-                time.sleep(0.3)
 
     else:
         tela.mostra_janela_aviso('Operacao somente permitida para usuarios logados')
@@ -609,37 +608,13 @@ def botao_cadastrar_produto(evento):
 
 # funcao de evento de clique do botao para listar leiloes ativos
 def botao_listar_leiloes(evento):
-    global s_resposta, resposta
 
     #chama funcao para listar leiloes
     lista_leiloes()
 
-    # espera retorno
-    while True:
-        s_resposta.acquire()
-
-        if resposta is not None:
-
-            #verifica se existe algum leilao ativo
-            if 'Listagem,' == resposta:
-                tela.mostra_janela_aviso('Nenhum leilao disponivel')
-            else:
-                #cria janela de leiloes para mostrar a lista de leiloes
-                janela_lista_leiloes = JanelaListaLeiloes(None, resposta)
-                janela_lista_leiloes.Center()
-                if janela_lista_leiloes.ShowModal() == wx.ID_OK:
-                    pass
-                janela_lista_leiloes.Destroy()
-
-            resposta = None
-            s_resposta.release()
-            break
-        s_resposta.release()
-        time.sleep(0.3)
-
 # funcao de evento de clique do botao para entrar no leilao
 def botao_entrar_leilao(evento):
-    global s_resposta, resposta, s_usuario_logado, usuario_logado
+    global s_operacao_atual, operacao_atual, s_usuario_logado, usuario_logado
 
     s_usuario_logado.acquire()
 
@@ -657,28 +632,12 @@ def botao_entrar_leilao(evento):
 
         if identificador is not None:
 
+            s_operacao_atual.acquire()
+            operacao_atual = [OPERACAO_ENTRAR_LEILAO,identificador]
+            s_operacao_atual.release()
+
             #chama funcao para entrar no leilao
             entra_leilao(identificador)
-
-            # espera retorno
-            while True:
-                s_resposta.acquire()
-
-                if resposta is not None:
-
-                    if resposta == 'Ok':
-                        #insere leilao na tabela de leiloes participantes na tela
-                        tela.insere_leilao_tabela(identificador)
-                        tela.mostra_janela_aviso('Entrada no leilao ' + identificador + ' com sucesso')
-                    else:
-                        tela.mostra_janela_aviso('Nao foi possivel entrar no leilao ' + identificador)
-
-                    resposta = None
-                    s_resposta.release()
-                    break
-                s_resposta.release()
-                time.sleep(0.3)
-
     else:
         tela.mostra_janela_aviso('Operacao somente permitida para usuarios logados')
 
@@ -686,7 +645,7 @@ def botao_entrar_leilao(evento):
 
 # funcao de evento de clique do botao para sair de um leilao
 def botao_sair_leilao(evento):
-    global s_resposta, resposta, s_usuario_logado, usuario_logado
+    global s_operacao_atual, operacao_atual, s_usuario_logado, usuario_logado
 
     s_usuario_logado.acquire()
 
@@ -704,27 +663,12 @@ def botao_sair_leilao(evento):
 
         if identificador is not None:
 
+            s_operacao_atual.acquire()
+            operacao_atual = [OPERACAO_SAIR_LEILAO,identificador]
+            s_operacao_atual.release()
+
             #chama funcao para sair do leilao
             sair_leilao(identificador)
-
-            # espera retorno
-            while True:
-                s_resposta.acquire()
-
-                if resposta is not None:
-
-                    if resposta == 'Ok':
-                        #remove leilao da tabela de leiloes
-                        tela.remove_leilao_tabela(identificador)
-                        tela.mostra_janela_aviso('Saida do leilao ' + identificador + ' com sucesso')
-                    else:
-                        tela.mostra_janela_aviso('Nao foi possivel sair do leilao ' + identificador)
-
-                    resposta = None
-                    s_resposta.release()
-                    break
-                s_resposta.release()
-                time.sleep(0.3)
 
     else:
         tela.mostra_janela_aviso('Operacao somente permitida para usuarios logados')
@@ -733,7 +677,7 @@ def botao_sair_leilao(evento):
 
 # funcao de evento de clique do botao para dar lance
 def botao_dar_lance(evento):
-    global s_resposta, resposta, s_usuario_logado, usuario_logado
+    global s_operacao_atual, operacao_atual, s_usuario_logado, usuario_logado
 
     s_usuario_logado.acquire()
 
@@ -751,25 +695,12 @@ def botao_dar_lance(evento):
 
         if dados_lance is not None:
 
+            s_operacao_atual.acquire()
+            operacao_atual = [OPERACAO_DAR_LANCE]
+            s_operacao_atual.release()
+
             #chama funcao para enviar lance
             envia_lance(dados_lance[0], dados_lance[1])
-
-            # espera retorno
-            while True:
-                s_resposta.acquire()
-
-                if resposta is not None:
-
-                    if resposta == 'Ok':
-                        tela.mostra_janela_aviso('Lance realizado com sucesso')
-                    else:
-                        tela.mostra_janela_aviso('Nao foi possivel dar o lance')
-
-                    resposta = None
-                    s_resposta.release()
-                    break
-                s_resposta.release()
-                time.sleep(0.3)
 
     else:
         tela.mostra_janela_aviso('Operacao somente permitida para usuarios logados')
@@ -778,11 +709,6 @@ def botao_dar_lance(evento):
 
 #funcao que envia pro servidor a mensagem para lancar produto
 def lanca_produto(nome, descricao, lance_minimo, dia, mes, ano, hora, minuto, segundo, tempo_maximo):
-    global resposta, s_resposta
-
-    s_resposta.acquire()
-    resposta = None
-    s_resposta.release()
 
     envia_mensagem_servidor(
         'Lanca_produto,' + nome + ',' + descricao + ',' + lance_minimo + ',' + dia
@@ -790,58 +716,29 @@ def lanca_produto(nome, descricao, lance_minimo, dia, mes, ano, hora, minuto, se
 
 #funcao que envia pro servidor a mensagem para adcionar usuario
 def adiciona_usuario(nome, telefone, endereco, email, senha):
-    global resposta, s_resposta
-
-    s_resposta.acquire()
-    resposta = None
-    s_resposta.release()
 
     resp = 'Adiciona_usuario,' + nome + ',' + telefone + ',' + endereco + ',' + email + ',' + senha
     envia_mensagem_servidor(resp)
 
 #funcao que envia pro servidor a mensagem para fazer login
 def faz_login(nome, senha):
-    global resposta, s_resposta
-
-    s_resposta.acquire()
-    resposta = None
-    s_resposta.release()
-
     envia_mensagem_servidor('Faz_login,' + nome + ',' + senha)
 
 #funcao que envia pro servidor a mensagem para enviar lance
 def envia_lance(identificador_leilao, valor_lance):
-    global resposta, s_resposta
-
-    s_resposta.acquire()
-    resposta = None
     envia_mensagem_servidor('Enviar_lance,' + identificador_leilao + ',' + valor_lance)
-    s_resposta.release()
 
 #funcao que envia pro servidor a mensagem para listar os leiloes
 def lista_leiloes():
-    global resposta, s_resposta
-
-    s_resposta.acquire()
-    resposta = None
     envia_mensagem_servidor('Lista_leiloes')
-    s_resposta.release()
 
 #funcao que envia pro servidor a mensagem para entrar em um leilao
 def entra_leilao(identificador_leilao):
-    global resposta, s_resposta
-    s_resposta.acquire()
-    resposta = None
     envia_mensagem_servidor('Entrar_leilao,' + identificador_leilao)
-    s_resposta.release()
 
 #funcao que envia pro servidor a mensagem para sair de um leilao
 def sair_leilao(identificador_leilao):
-    global resposta, s_resposta
-    s_resposta.acquire()
-    resposta = None
     envia_mensagem_servidor('Sair_leilao,' + identificador_leilao)
-    s_resposta.release()
 
 # Funcao que envia mensagem para o servidor
 def envia_mensagem_servidor(mensagem):
@@ -857,7 +754,6 @@ def configura_servidor(host, port):
     global host_ip, porta
     host_ip = host
     porta = port
-
 
 # Funcao que conecta socket do servidor
 def conecta_servidor():
@@ -877,7 +773,6 @@ def conecta_servidor():
 # Funcao que desconecta socket do servidor
 def desconecta_servidor():
     servidor_sock.close()
-
 
 # Funcao que realiza comunicacao com servidor
 def estabelece_conexao_servidor(host_ip, porta):
@@ -901,7 +796,6 @@ def estabelece_conexao_servidor(host_ip, porta):
 
 #Thread que escuta as mensagens vindas do servidor
 def escuta_servidor():
-    global s_resposta, resposta
 
     while True:
         data = servidor_sock.recv(4096)
@@ -909,20 +803,24 @@ def escuta_servidor():
 
         #verifica o tipo da mensagem para processar
         if 'Contato_cliente' in data:
-            #executa o metodo na thread da interface grafica
+            #executa o metodo para mostrar janela de contato do cliente  na thread da interface grafica
             wx.CallAfter(tela.mostra_comprador,str(data))
         elif 'Contato_vendedor' in data:
-            # executa o metodo na thread da interface grafica
+            # executa o metodo para mostrar janela de contato do vendedor na thread da interface grafica
             wx.CallAfter(tela.mostra_vendedor,str(data))
         elif 'Lance' in data:
+            # chama funcao para atualizar o lance na tabela de leiloes
             tela.atualiza_leilao_tabela(str(data))
         elif 'Fim_leilao' in data:
-            # executa o metodo na thread da interface grafica
+            # executa o metodo para mostrar janela de aviso de fim de leilao na thread da interface grafica
             wx.CallAfter(tela.mostra_fim_leilao,str(data))
+        elif 'Listagem' in data:
+            # executa o metodo para mostrar janela da lista de leiloes na thread da interface grafica
+            wx.CallAfter(tela.mostra_lista_leiloes,str(data))
         else:
-            s_resposta.acquire()
-            resposta = str(data)
-            s_resposta.release()
+            # executa o metodo para processar as respostas de Ok e not_okna thread da interface grafica
+            wx.CallAfter(tela.processa_resposta, str(data))
+
 
 
 # Variaveis para guarda informacoes do servidor
@@ -935,10 +833,19 @@ s_servidor_contectado = BoundedSemaphore()
 usuario_logado = False
 s_usuario_logado = BoundedSemaphore()
 nome_usuario = ''
-# operacao_atual = None
-# s_operacao_atual = BoundedSemaphore()
-resposta = None
-s_resposta = BoundedSemaphore()
+#variavel para controlar a operacao atual, para mostrar as respostas do servidor
+operacao_atual = None
+#semaforo para controlar acesso a variavel de operacao_atual, pq e acessada de outra thread
+s_operacao_atual = BoundedSemaphore()
+
+#constantes para controlar qual e a operacao atual
+OPERACAO_CADASTRO_USUARIO = 0
+OPERACAO_LOGIN = 1
+OPERACAO_SAIDA = 2
+OPERACAO_CADASTRO_PRODUTO = 3
+OPERACAO_ENTRAR_LEILAO = 4
+OPERACAO_SAIR_LEILAO = 5
+OPERACAO_DAR_LANCE = 6
 
 try:
 
