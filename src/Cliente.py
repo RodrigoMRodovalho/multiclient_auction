@@ -909,12 +909,15 @@ def escuta_servidor():
 
         #verifica o tipo da mensagem para processar
         if 'Contato_cliente' in data:
+            #executa o metodo na thread da interface grafica
             wx.CallAfter(tela.mostra_comprador,str(data))
         elif 'Contato_vendedor' in data:
+            # executa o metodo na thread da interface grafica
             wx.CallAfter(tela.mostra_vendedor,str(data))
         elif 'Lance' in data:
             tela.atualiza_leilao_tabela(str(data))
         elif 'Fim_leilao' in data:
+            # executa o metodo na thread da interface grafica
             wx.CallAfter(tela.mostra_fim_leilao,str(data))
         else:
             s_resposta.acquire()
@@ -939,6 +942,7 @@ s_resposta = BoundedSemaphore()
 
 try:
 
+    #cria interface grafica
     app = wx.App(False)
 
     #cria janela com dados do servidor
