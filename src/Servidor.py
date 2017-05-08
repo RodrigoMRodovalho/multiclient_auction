@@ -475,10 +475,14 @@ def conta_tempo():
         #verifica se existem leiloes ativos
         if numero_leiloes_ativos > 0:
 
+            s_numero_leiloes_ativos.release()
+
             s_leiloes.acquire()
 
+            leiloes_copy = leiloes.copy()
+
             #Para cada leilao ativo, verifica se passou o tempo entre lances do leilao
-            for leilao in leiloes:
+            for leilao in leiloes_copy:
 
                 tempo_leilao = leiloes[leilao][0].tempo_termina_leilao
 
@@ -529,7 +533,6 @@ def conta_tempo():
                         s_numero_leiloes_ativos.release()
 
             s_leiloes.release()
-            s_numero_leiloes_ativos.release()
         else:
             s_numero_leiloes_ativos.release()
             #espera 1 segundo
